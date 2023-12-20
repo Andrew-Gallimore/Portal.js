@@ -1,8 +1,8 @@
 # Portal.js
 
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/username/repo/blob/main/LICENSE)
-[![GitHub Stars](https://img.shields.io/github/stars/username/repo.svg)](https://github.com/username/repo/stargazers)
-[![GitHub Issues](https://img.shields.io/github/issues/username/repo.svg)](https://github.com/username/repo/issues)
+[![License](https://img.shields.io/github/license/Andrew-Gallimore/Portal.js)
+[![GitHub Stars](https://img.shields.io/github/stars/Andrew-Gallimore/Portal.js.svg)](https://github.com/Andrew-Gallimore/Portal.js/stargazers)
+[![GitHub Issues](https://img.shields.io/github/issues/Andrew-Gallimore/Portal.js.svg)](https://github.com/Andrew-Gallimore/Portal.js/issues)
 
 **A library for creating a *serverless* synced database between pages in the browser.**
 
