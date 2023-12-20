@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Testing Portal</title>
+
+</head>
+<body>
+    
+</body>
+<script src="Portal.js"></script>
+<script>
+    Portal.openChannel("test12345678");
+    Portal.on("state_1", function(data){
+        console.log("State_1 updated" + data);
+    });
+</script>
+</html>
