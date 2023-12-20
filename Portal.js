@@ -1,10 +1,12 @@
 /**
  * A channel in the Portal, which peers will join through.
  * @param {String} name The name of the channel the channel will represent/open.
+ * @param {Array} syncedKeys An array of keys allowed to sync to the peers in the channel.
  */
 class Channel {
-    constructor(name) {
+    constructor(name, syncedKeys) {
         this.name = name;
+        this.syncedKeys = syncedKeys;
         this.iframe = undefined;
         this.loaded = false;
 
@@ -117,6 +119,27 @@ class Peer {
         if(message.data.dataReceived.content.push) {
             // ===== If a peer is trying to push data to the synced database =====
 
+            // Checking if the key is allowed to be synced
+            var allowPush = false;
+            for (let i = 0; i < Portal.channels.length; i++) {
+                // Getting the right channel to look in
+                if(Portal.channels[i].name === this.channelName) {
+                    for (let j = 0; j < Portal.channels[j].syncedKeys.length; i++) {
+                        // Checking if the key is allowed to be synced
+                        if(Portal.channels[i].syncedKeys[j] === message.data.dataReceived.content.push.key) {
+                            allowPush = true;
+                            break;
+                        }
+                    }
+                    break;
+                }
+            }
+            if(!allowPush) {
+                // Sending bad responce
+                this.respond(message.data.dataReceived.conv, false);
+                return;
+            };
+
             // Checking if the data is already in the cue
             var found = false;
             for (let i = 0; i < Portal.cue.length; i++) {
@@ -127,10 +150,10 @@ class Peer {
             }
             if(!found) {
                 // Add it to cue.
-                var pshreq = new PushRequest(message.data.dataReceived.content.push.id, message.data.dataReceived.content.push.key, message.data.dataReceived.content.push.data);
+                new PushRequest(message.data.dataReceived.content.push.id, message.data.dataReceived.content.push.key, message.data.dataReceived.content.push.data);
             }
 
-            // Sending responce
+            // Sending good responce
             this.respond(message.data.dataReceived.conv, true);
         }else if(message.data.dataReceived.content.completeRequest) {
             // ===== If a peer is completing pushing data to the synced database =====
@@ -139,7 +162,6 @@ class Peer {
             for (let i = 0; i < Portal.cue.length; i++) {
                 if(Portal.cue[i].id === message.data.dataReceived.content.completeRequest.id) {
                     // Completing the request
-                    console.log("ok3")
                     Portal.cue[i].completeRequest();
 
                     // Removing the push request from the cue

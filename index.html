@@ -11,7 +11,7 @@
 </body>
 <script src="Portal.js"></script>
 <script>
-    Portal.openChannel("test12345678");
+    Portal.openChannel("test12345678", ["state_1", "state_2"]);
     Portal.on("state_1", function(data){
         console.log("State_1 updated" + data);
     });
