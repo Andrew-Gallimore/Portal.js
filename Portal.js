@@ -11,7 +11,7 @@ class Channel {
         this.loaded = false;
 
         // Timeout for if the room hasn't loaded by a certain point
-        this.loadWaitime = 6000;
+        this.loadWaitime = 7000;
 
         // Bringing in the event system
         Object.assign(this, EventMixin);
@@ -21,11 +21,13 @@ class Channel {
      * Starts channel loading. And dispatches an event for if its loaded.
      */
     load() {
+        // Creating iframe
         var iframe = document.createElement("iframe");
         iframe.src = "https://vdo.ninja/alpha/?room=" + this.name + "&vd=0&ad=0&autostart&cleanoutput";
         document.body.appendChild(iframe);
         this.iframe = iframe;
 
+        // Adding self to channels list
         Portal.channels.push(this);
 
         // Timeout for if the room hasn't loaded by a certain point
@@ -63,7 +65,8 @@ class Channel {
         }else if(message.data.action === "guest-connected") {
             // Creating a new guest
             var UUID = message.data.UUID;
-            new Peer(UUID, this, this.iframe);
+            var peer = new Peer(UUID, this, this.iframe);
+            this.dispatch("portal-peer-connected", peer);
         }else if(message.data.action === "end-view-connection") {
             // Removing peer from peers list
             for (let i = 0; i < Portal.peers.length; i++) {
@@ -72,6 +75,7 @@ class Channel {
                     break;
                 }
             }
+            this.dispatch("portal-peer-disconnected", message.data.UUID);
         }
     }
 }
@@ -484,6 +488,18 @@ var Portal = {
     // The temporary location for changes before they have been applied to the db.
     cue: [],
 
+    start: () => {
+        // Checking if the browser supports webRTC
+        if(!window.RTCPeerConnection) {
+            console.error("Portal requires WebRTC to work, but your browser doesn't support it.");
+            Portal.dispatch("portal-error", {err: "webRTC", msg: "Portal requires WebRTC to work, but your browser doesn't support it."});
+            return;
+        }
+
+        // Stating that the portal has started
+        Portal.dispatch("portal-started");
+    },
+
 
     /**
      * Makes a push request to set some data in the synced database.
@@ -523,9 +539,16 @@ var Portal = {
     */
     openChannel: (name, syncedKeys) => {
         var chan = new Channel(name, syncedKeys);
+
+        // Using 'fired' to prevent firing the event twice. Don't know why it always fires twice... :(
+        var fired = false;
         chan.on("portal-chan-finished", (success) => {
-            if(!success) {
-                console.warn("Portal for '" + name + "' failed when loading. Didn't add it to Portal.channels");
+            if(!success && !fired) {
+                fired = true;
+                Portal.dispatch("portal-channel-error", name);
+            }else if(!fired) {
+                fired = true;
+                Portal.dispatch("portal-channel-started", name);
             }
         })
         chan.load();
@@ -533,8 +556,3 @@ var Portal = {
 }
 // Bringing in the event system to the Portal obj.
 Object.assign(Portal, EventMixin);
-
-// Checking if the browser supports webRTC
-if(!window.RTCPeerConnection) {
-    console.error("Portal requires WebRTC to work, but your browser doesn't support it.");
-}

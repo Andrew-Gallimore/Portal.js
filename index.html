@@ -8,6 +8,8 @@
 </head>
 <body>
     <h1>More Secure User</h1>
+    <h2>Portal <span class="p-started"></span></h2>
+    <br>
     <h3>State_1</h3>
     <p class="s1"></p>
     <h3>State_2</h3>
@@ -15,13 +17,40 @@
 </body>
 <script src="Portal.js"></script>
 <script>
+    // Portal status events
+    Portal.on("portal-started", function(data){
+        document.querySelector(".p-started").innerHTML = "Started";
+    });
+    Portal.on("portal-error", function(data){
+        document.querySelector(".p-started").innerHTML = "Error";
+    });
+
+    // Channel status events
+    Portal.on("portal-channel-error", function(name){
+        console.warn("Channel '" + name + "' failed when loading.");
+    });
+    Portal.on("portal-channel-started", function(name){
+        console.log("Channel '" + name + "' finished loading successfully.");
+    });
+
+    // Peer join/leave events
+    Portal.on("portal-peer-connected", function(peer){
+        console.log("Peer " + peer.UUID + " in channel " + peer.channel.name + " connected.");
+    });
+    Portal.on("portal-peer-disconnected", function(UUID){
+        console.log("Peer " + UUID + " left.");
+    });
+
+
+
     // Opening secure channel
     Portal.openChannel("secure1234", ["state_1", "state_2"]);
-    
     // Opening less secure channel
     Portal.openChannel("public1234", ["state_1"]);
 
-    // Listening to state updates
+
+
+    // Listening to state updates for custom data
     Portal.on("state_1", function(data){
         console.log("State_1 updated" + data);
         document.querySelector(".s1").innerHTML = data;
@@ -30,5 +59,7 @@
         console.log("State_2 updated" + data);
         document.querySelector(".s2").innerHTML = data;
     });
+
+    Portal.start();
 </script>
 </html>
