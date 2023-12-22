@@ -1,4 +1,4 @@
-# Portal.js
+# 🔮 Portal.js
 
 ![License](https://img.shields.io/github/license/Andrew-Gallimore/Portal.js)
 ![GitHub Stars](https://img.shields.io/github/stars/Andrew-Gallimore/Portal.js)
@@ -12,9 +12,9 @@ Portal.js is particularly useful for creating real-time, collaborative web appli
 
 ## Features
 
-1. **Peer-to-peer communication**: Enables direct communication between different users (peers) without the need for a central server.
-2. **Channels**: Provides a way for peers to join specific channels for communication. A channel can be thought of as a room where peers can exchange messages or data.
-3. **Real-time updates**: Changes made by one peer can be instantly seen by all other peers in the same channel.
+1. 👥 **Peer-to-peer communication**: Enables direct communication between different users (peers) without the need for a central server.
+2. 🔔 **Channels**: Provides a way for peers to join specific channels for communication. A channel can be thought of as a room where peers can exchange messages or data.
+3. 🌎 **Real-time updates**: Changes made by one peer can be instantly seen by all other peers in the same channel.
 
 ## Basic Usage
 
@@ -43,4 +43,4 @@ A channel is a way to organize and group peers together, allowing them to commun
 
 Each peer has a stored database, however, in some cases there may be more data stored for some peers than what is shared on a channel. When creating a channel, you need to specify what data should be synced with other peers in that channel. If you limit what should be shared, from any other peers' perspective, there is only that limited set of data in the synced database.
 
-For example, you can have one 'more secure' channel that has access to all the data, and then have another 'less secure' channel with limited access to *specific* data only.
+> For example, you can have one 'more secure' channel that has access to all the data, and then have another 'less secure' channel with limited access to *specific* data only.

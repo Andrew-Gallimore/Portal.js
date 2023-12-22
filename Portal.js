@@ -63,7 +63,15 @@ class Channel {
         }else if(message.data.action === "guest-connected") {
             // Creating a new guest
             var UUID = message.data.UUID;
-            var peer = new Peer(UUID, this.name, this.iframe);
+            new Peer(UUID, this, this.iframe);
+        }else if(message.data.action === "end-view-connection") {
+            // Removing peer from peers list
+            for (let i = 0; i < Portal.peers.length; i++) {
+                if(Portal.peers[i].UUID === message.data.UUID) {
+                    Portal.peers[i].remove();
+                    break;
+                }
+            }
         }
     }
 }
@@ -71,13 +79,13 @@ class Channel {
 /**
  * A peer in a channel of the Portal, which messages can be sent too.
  * @param {String} UUID The uuid of the peer.
- * @param {String} channelName The name of the channel the peer is in.
+ * @param {String} channel The channel object the peer is in.
  * @param {Element} iframe The iframe where the peer is from, and their messages will go through.
  */
 class Peer {
-    constructor(UUID, channelName, iframe) {
+    constructor(UUID, channel, iframe) {
         this.UUID = UUID;
-        this.channelName = channelName;
+        this.channel = channel;
         this.iframe = iframe;
         this.conversations = {};
 
@@ -97,7 +105,7 @@ class Peer {
         if(message.data.dataReceived.conv && message.data.dataReceived.content) {
             // If the covnersation exists, that means we sent it and the callback hasn't been called yet
             if(this.conversations[message.data.dataReceived.conv]){
-                // Calling responce callback for conversation
+                // Calling responce callback for conversation and deleting the conversation
                 this.conversations[message.data.dataReceived.conv].cb(message.data.dataReceived.content);
                 delete this.conversations[message.data.dataReceived.conv];
             }else{
@@ -113,7 +121,7 @@ class Peer {
 
     /**
      * Handles a message from a peer, as it can be for different functions.
-     * @description This assumes that the message has been filtered to be correct format already.
+     * @description This assumes that the message has been filtered to be correct format
      */
     handleMessage(message) {
         if(message.data.dataReceived.content.push) {
@@ -121,22 +129,15 @@ class Peer {
 
             // Checking if the key is allowed to be synced
             var allowPush = false;
-            for (let i = 0; i < Portal.channels.length; i++) {
-                // Getting the right channel to look in
-                if(Portal.channels[i].name === this.channelName) {
-                    for (let j = 0; j < Portal.channels[j].syncedKeys.length; i++) {
-                        // Checking if the key is allowed to be synced
-                        if(Portal.channels[i].syncedKeys[j] === message.data.dataReceived.content.push.key) {
-                            allowPush = true;
-                            break;
-                        }
-                    }
+            for (let i = 0; i < this.channel.syncedKeys.length; i++) {
+                // Checking if the key is allowed to be synced
+                if(this.channel.syncedKeys[i] === message.data.dataReceived.content.push.key) {
+                    allowPush = true;
                     break;
                 }
             }
             if(!allowPush) {
-                // Sending bad responce
-                this.respond(message.data.dataReceived.conv, false);
+                // Early return if the key isn't allowed to be synced
                 return;
             };
 
@@ -205,35 +206,90 @@ class Peer {
             content: message
         }, "UUID": this.UUID}, '*');
     }
+
+    /**
+     * Removes self from peer list and any other lists.
+     */
+    remove() {
+        // Remving self from peers list
+        for (let i = 0; i < Portal.peers.length; i++) {
+            if(Portal.peers[i] === this) {
+                Portal.peers.splice(i,1);
+                break;
+            }
+        }
+        // Removing self from any push requests
+        for (let i = 0; i < Portal.cue.length; i++) {
+            for (let j = 0; j < Portal.cue[i].peersSentTo.length; j++) {
+                if(Portal.cue[i].peersSentTo[j] === this) {
+                    Portal.cue[i].peersSentTo.splice(j,1);
+                    break;
+                }
+            }
+            for (let j = 0; j < Portal.cue[i].peersWithData.length; j++) {
+                if(Portal.cue[i].peersWithData[j] === this) {
+                    Portal.cue[i].peersWithData.splice(j,1);
+                    break;
+                }
+            }
+
+            // Checking again if the push request can go through, as a peer has been removed
+            Portal.cue[i].checkEnoughPeers();
+        }
+
+    }
 }
 
 
 /**
  * A push request for data to the synced Portal database
  * @param {String} id A custom id of the push request.
- * @param {String} channelName The name of the channel the push request should be sent too.
  * @param {String} key The key of the new data.
  * @param {Any} data The actual data to be put under the key.
  */
 class PushRequest {
-    constructor(id, channelName, key, data) {
+    constructor(id, key, data) {
         this.id = id;
-        this.channelName = channelName;
         this.key = key;
         this.data = data;
         this.peersWithData = [];
+        this.peersSentTo = [];
+        this.completed = false;
 
         // Push this to the cue
         Portal.cue.push(this);
     }
 
     /*
-     * Sends the push request to all peers in the channel.
+     * Sends the push request to all peers in channels that allow the push requests key to be shared.
     */
     sendToPeers() {
+        // Looping through channels to find which allow the key to be shared
+        var allowedChannels = [];
+        for (let i = 0; i < Portal.channels.length; i++) {
+            for (let j = 0; j < Portal.channels[i].syncedKeys.length; j++) {
+                if(Portal.channels[i].syncedKeys[j] === this.key) {
+                    allowedChannels.push(Portal.channels[i].name);
+                    break;
+                }
+            }
+        }
+
+        // Looping through all peers
         for (let i = 0; i < Portal.peers.length; i++) {
-            // Filtering peers to only ones in the same channel
-            if(Portal.peers[i].channelName !== this.channelName) continue;
+            // Filtering peers to only ones in the channels listed in allowedChannels
+            var allowed = false;
+            for (let j = 0; j < allowedChannels.length; j++) {
+                if(Portal.peers[i].channel.name === allowedChannels[j]) {
+                    allowed = true;
+                    break;
+                }
+            }
+            if(!allowed) continue;
+           
+
+            // Adding peer to list of peers sent to
+            if(!this.peersSentTo.includes(Portal.peers[i])) this.peersSentTo.push(Portal.peers[i]);
             
             // Send the push request
             Portal.peers[i].send({"push": {
@@ -247,29 +303,41 @@ class PushRequest {
                     this.peersWithData.push(Portal.peers[i]);
 
                     // Check if enough peers have the data
-                    if(this.checkEnoughPeers()) {
-                        // Complete the request
-                        this.completeRequest();
-
-                        // Tell other peers to also complete the request
-                        for (let i = 0; i < this.peersWithData.length; i++) {
-                            this.peersWithData[i].send({"completeRequest": {
-                                id: this.id
-                            }});
-                        }
-                    }
+                    this.checkEnoughPeers();
                 }
             });
         }
+
+        // Setting timeout to check on any peers that haven't responded with data yet
+        setTimeout(() => {
+            if(this.completed) return;
+
+            // Checking if peers have responded with data
+            for (let i = 0; i < this.peersSentTo.length; i++) {
+                var found = false;
+                for (let j = 0; j < this.peersWithData.length; j++) {
+                    if(this.peersSentTo[i] === this.peersWithData[j]) {
+                        found = true;
+                        break;
+                    }
+                }
+                // If they didn't respond with data, then ping them to see if they are still connected
+                if(!found) {
+                    // TODO: Ping peer
+                }
+            }
+        }, 2000);
+
     }
 
     /*
-     * Checks if enough peers have responded that they have the data
+     * Checks if enough peers have responded that they have the data, and if so completes the push request.
     */
     checkEnoughPeers() {
         // Right now just Checking if all peers have the data
-        if(this.peersWithData.length >= Portal.peers.length) {
-            return true;
+        if(this.peersWithData.length >= this.peersSentTo.length && this.peersWithData.length > 0) {
+            // Complete the request
+            this.completeRequest();
         }
     }
 
@@ -277,11 +345,23 @@ class PushRequest {
      * Completes the push request, adding the data to the db and removing the push request from the cue.
     */
     completeRequest() {
+        if(this.completed) return;
+        this.completed = true;
+
         // Add the data to the db
         Portal.db[this.key] = this.data;
 
+        console.log("completing request");
+
         // Emiting event that the data has been updated
         Portal.dispatch(this.key, this.data);
+
+        // Tell other peers to also complete the request
+        for (let i = 0; i < this.peersWithData.length; i++) {
+            this.peersWithData[i].send({"completeRequest": {
+                id: this.id
+            }});
+        }
 
         // Removing the push request from the cue
         for (let i = 0; i < Portal.cue.length; i++) {
@@ -439,9 +519,10 @@ var Portal = {
      * Opens a channel in the portal
      * @description Note: the channel automatically puts itself into the Portal.channels array
      * @param {String} name The name of the channel to be opened (the vdo.ninja roomname)
+     * @param {Array} syncedKeys An array of keys allowed to sync to the peers in the channel.
     */
-    openChannel: (name) => {
-        var chan = new Channel(name);
+    openChannel: (name, syncedKeys) => {
+        var chan = new Channel(name, syncedKeys);
         chan.on("portal-chan-finished", (success) => {
             if(!success) {
                 console.warn("Portal for '" + name + "' failed when loading. Didn't add it to Portal.channels");
@@ -452,3 +533,8 @@ var Portal = {
 }
 // Bringing in the event system to the Portal obj.
 Object.assign(Portal, EventMixin);
+
+// Checking if the browser supports webRTC
+if(!window.RTCPeerConnection) {
+    console.error("Portal requires WebRTC to work, but your browser doesn't support it.");
+}
