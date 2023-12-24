@@ -21,8 +21,8 @@ Portal.js is particularly useful for creating real-time, collaborative web appli
 You can include the file `Portal.js` in your page, and the main `Portal` object will be imported.
 
 ```js
-// Opens the channel "test1234" with specific data that should be synced "data_1" and "data_2".
-Portal.openChannel("test1234", ["data_1", "data_2"]);
+// Opens the channel "test1234", with specific data that should be synced "data_1" and "data_2", and it allows reading personal data (the "true").
+Portal.openChannel("test1234", ["data_1", "data_2"], true);
 
 // Listens for changed to "data_1" and "data_2", whether or not we made the change
 Portal.on("data_1", function(data){
@@ -36,6 +36,8 @@ Portal.on("data_2", function(data){
 // (if it can't sync the change, the listener above won't be called)
 Portal.setDB("data_1", "I'm the data");
 ```
+
+See (index.html)[/index.html] for extensive example code of how system works.
 
 > [!IMPORTANT]
 > Data keys shouldn't start with "portal-" as that is a reserved prefix for events from the portal system itself. For example if there is a startup error `portal-start-error` or if another peer joins `portal-peer-joined`. See a full list of built-in portal events you can listen too: [here](#built-in-events)
