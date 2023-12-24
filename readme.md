@@ -37,7 +37,7 @@ Portal.on("data_2", function(data){
 Portal.setDB("data_1", "I'm the data");
 ```
 
-See (index.html)[/index.html] for extensive example code of how system works.
+See [index.html](/index.html) for extensive example code of how system works.
 
 > [!IMPORTANT]
 > Data keys shouldn't start with "portal-" as that is a reserved prefix for events from the portal system itself. For example if there is a startup error `portal-start-error` or if another peer joins `portal-peer-joined`. See a full list of built-in portal events you can listen too: [here](#built-in-events)
