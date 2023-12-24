@@ -2,11 +2,13 @@
  * A channel in the Portal, which peers will join through.
  * @param {String} name The name of the channel the channel will represent/open.
  * @param {Array} syncedKeys An array of keys allowed to sync to the peers in the channel.
+ * @param {Boolean} allowReadingLocal If the peers in the channel are allowed to read the local/personal data.
  */
 class Channel {
-    constructor(name, syncedKeys) {
+    constructor(name, syncedKeys, allowReadingLocal) {
         this.name = name;
         this.syncedKeys = syncedKeys;
+        this.allowReadingLocal = allowReadingLocal;
         this.iframe = undefined;
         this.loaded = false;
 
@@ -62,11 +64,19 @@ class Channel {
             // Channel finished loading
             this.dispatch("portal-chan-finished", true);
             this.loaded = true;
-        }else if(message.data.action === "guest-connected") {
-            // Creating a new guest
+        }else if(message.data.action === "view-connection-info") {
+            // I would want to user guest-connected, but it seams to fire too early, and can't send messages to the peer yet.
+            // Creating a new peer object
             var UUID = message.data.UUID;
             var peer = new Peer(UUID, this, this.iframe);
-            this.dispatch("portal-peer-connected", peer);
+
+            setTimeout(() => {
+                // Requesting full personalData from peer
+                peer.send("personalData", (response) => {
+                    peer.info = response;
+                    this.dispatch("portal-peer-connected", peer);
+                });
+            }, 200);
         }else if(message.data.action === "end-view-connection") {
             // Removing peer from peers list
             for (let i = 0; i < Portal.peers.length; i++) {
@@ -89,6 +99,7 @@ class Channel {
 class Peer {
     constructor(UUID, channel, iframe) {
         this.UUID = UUID;
+        this.info = {};
         this.channel = channel;
         this.iframe = iframe;
         this.conversations = {};
@@ -173,11 +184,18 @@ class Peer {
                     Portal.cue.splice(i,1);
                 }
             }
-        }else if(message.data.dataReceived.content.personalData) {
-            // ===== If a peer is requesting personal data =====
-
-            // Sending responce
-            this.respond(message.data.dataReceived.conv, Portal.local[message.data.dataReceived.content.personalData.key]);
+        }else if(message.data.dataReceived.content === "personalData") {
+            // ===== If a peer is requesting personal data =====\
+            
+            // Check if the peer/the channel their in isn't allowed to get the personal data
+            if(!this.channel.allowReadingLocal) {
+                // Sending bad responce
+                this.respond(message.data.dataReceived.conv, "Not allowed to read personal data.");
+                return;
+            };
+            
+            // Sending good responce
+            this.respond(message.data.dataReceived.conv, Portal.local);
         }
     }
 
@@ -327,7 +345,7 @@ class PushRequest {
                 }
                 // If they didn't respond with data, then ping them to see if they are still connected
                 if(!found) {
-                    // TODO: Ping peer
+                    // TODO: Add system to manage when a user isn't responding to anything
                 }
             }
         }, 2000);
@@ -515,11 +533,11 @@ var Portal = {
 
     /**
      * Sets some data in the local database.
-     * @param {String} key The key of the new data in the database.
-     * @param {Any} data The actual data to be put under the key in the database.
+     * @param {String} key The key of the new data in the personal data.
+     * @param {Any} data The actual data to be put under the key in the personal data.
     */
     setLocal: (key, data) => {
-        local[key] = data;
+        Portal.local[key] = data;
     },
 
     /**
@@ -536,9 +554,10 @@ var Portal = {
      * @description Note: the channel automatically puts itself into the Portal.channels array
      * @param {String} name The name of the channel to be opened (the vdo.ninja roomname)
      * @param {Array} syncedKeys An array of keys allowed to sync to the peers in the channel.
+     * @param {Boolean} allowReadingLocal If the peers in the channel are allowed to read the local/personal data.
     */
-    openChannel: (name, syncedKeys) => {
-        var chan = new Channel(name, syncedKeys);
+    openChannel: (name, syncedKeys, allowReadingLocal) => {
+        var chan = new Channel(name, syncedKeys, allowReadingLocal);
 
         // Using 'fired' to prevent firing the event twice. Don't know why it always fires twice... :(
         var fired = false;

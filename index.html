@@ -41,12 +41,16 @@
         console.log("Peer " + UUID + " left.");
     });
 
+    // Setting local state for name
+    // -- You will want to do this with a prompt or something, likely
+    Portal.setLocal("name", "John Doe");
+
 
 
     // Opening secure channel
-    Portal.openChannel("secure1234", ["state_1", "state_2"]);
+    Portal.openChannel("secure1234", ["state_1", "state_2"], true);
     // Opening less secure channel
-    Portal.openChannel("public1234", ["state_1"]);
+    Portal.openChannel("public1234", ["state_1"], false);
 
 
 
@@ -63,3 +67,5 @@
     Portal.start();
 </script>
 </html>
+
+<!-- TODO: add signing & verifying through rsa encription to verify directors -->
