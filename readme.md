@@ -18,7 +18,7 @@ Portal.js is particularly useful for creating real-time, collaborative web appli
 
 ## Basic Usage
 
-You can include the file `Portal.js` in your page, and the main `Portal` object will be imported.
+You can include the file `Portal.js` in your page, and the main `Portal` object can then be used.
 
 ```js
 // Opens the channel "test1234", with specific data that should be synced "data_1" and "data_2", and it allows reading personal data (the "true").
@@ -37,7 +37,7 @@ Portal.on("data_2", function(data){
 Portal.setDB("data_1", "I'm the data");
 ```
 
-See [index.html](/index.html) for extensive example code of how system works.
+See [index.html](/index.html) for expansive example code of how system works.
 
 > [!IMPORTANT]
 > Data keys shouldn't start with "portal-" as that is a reserved prefix for events from the portal system itself. For example if there is a startup error `portal-start-error` or if another peer joins `portal-peer-joined`. See a full list of built-in portal events you can listen too: [here](#built-in-events)
@@ -46,9 +46,39 @@ See [index.html](/index.html) for extensive example code of how system works.
 
 A channel is a way to organize and group peers together, allowing them to communicate and sync stored data with each other. However, channels can be used to limit the synced data for certain peers.
 
-Each peer has a singular stored database, however, and all the channels they join share that database. In some cases there may be more data stored for some peers than what is shared on a particular channel. When creating a channel, you need to specify what data should be synced with other peers in that channel. If you limit what should be shared in one channel, from any other peers' perspective in that channel, there is only that limited set of data in the synced database.
+When creating a channel, you need to specify what data of the database should be synced with other peers in that channel. With multiple channels connected, if you limit what should be shared in one channel, from any other peers' perspective in that channel, there is only that limited set of data in the synced database.
 
+> [!TIP]
 > For example, you can have one 'more secure' channel that has access to all the data, and then have another 'less secure' channel with limited access to *specific* data only.
+
+
+## Channel Write Rules
+
+By default, all peers in a channel will have the ability to write to all the keys they have access too. In order to make some data *read only* by default for peers in a channel (unless they have the authority too) you can create a write-rule and associated write-key.
+
+A **Write Rule** gives write authority to some peers/channels you choose over certain keys. The system relys on you distrubuting a **writeKey** (which is generated after creating a Write Rule) to **all** peers in the channel which should have read-only keys. Anyone who used the writeKey when loading the channel will be protected from unauthorized writes to keys it controls, maing the data practically read-only. When you create a write rule, it automatically distrubutes the rule to everyone you said to give wite authority too, and then asyncronously returns a `writeKey`, which you need to distrubute yourself. 
+
+> [!IMPORTANT]
+> Its important that all peers who want to be under the write protection provided by the write rule must load the channel with the same configuration including any writeKey(s). See [[Portal Security]](#portal-security) for more details.
+
+> [!TIP]
+> For example, you want channel A to have full read/write of `data_1` and `data_2` keys, and channel B to only have read access of `data_1`. You would create a Write Rule "Rule_1", and give that authority to anyone in channel A. Then, when loading the channel B, you add that "Rule_1" to `data_1`. This way, any people who have the authority by being in both channel A & B, can write to data_1. But if you are only in channel B (not having access to the Write Rule's authority in channel A), you can NOT write to `data_1`.
+
+
+## Portal Security
+
+There are three main methods of securing data in the Portal library:
+
+1. You create channels with long and complex names, so the likelyhood of an outsider guessing the channel's name is low.
+
+2. You only provide read access to keys that a channel NEEDS. From an outsiders point of view, they don't see any other keys than what is provided in the channel. And by being in a channel, peers don't know what other channels any other peers also have open.
+
+3. You give write authority to some channel(s) over keys, and limit who can write to those keys by using the associated `writeKey` provided. If an outsider saw the keys, and tryed to write to the shared db without having the authority, assuming all other peers are using the `writeKey`, the outsider couldn't break anything.
+
+To obtain the database's security, its important[[1]](#1) all peers use the same configuration. Other peer's experience won't be affected if someone fails to have the same read/write configuration -- like if a bad-actor is trying to cause havok.
+
+> #### [1]
+> Its important, but not nessesary that all peers load the channel with the same configuration (from a security stand-point). The Portal library aims to create a semi-abstracted layer of a single syncronized database, when its in-fact based on all peers having their own databases and sharing the same read/write configuration and therfore data. The read/write rules apply to what others can write/read to a peers local database, and so if everyone has the same configuration, all peers should share the perscribed data without limitations. If a peer fails to load the channel with the same read/write configuration, it will only affect their experience/security, and not others who all have the same 'correct' configuration.
 
 ## Built-in Events
 
